@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>POSSIBLE COFFEE 焙煎サポーター v7</title>
+<title>POSSIBLE COFFEE 焙煎サポーター v8</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -374,6 +374,103 @@
     #memory-bar { width: 85vw; }
     #memory-toggle.shifted { right: 85vw; }
   }
+
+  /* ━━━ v8追加スタイル ━━━ */
+
+  /* 複数添付チップ */
+  .attach-chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-bottom: 8px;
+  }
+  .attach-chip {
+    display: flex; align-items: center; gap: 6px;
+    background: #fff; border: 1px solid #d0c9c0;
+    border-radius: 8px; padding: 4px 8px 4px 4px;
+    font-size: 12px; color: #555;
+    max-width: 180px;
+  }
+  .attach-chip.image { border-left: 3px solid #3a7bc8; }
+  .attach-chip.pdf   { border-left: 3px solid #c0392b; }
+  .attach-chip.data  { border-left: 3px solid #1D9E75; }
+  .attach-chip-thumb {
+    width: 32px; height: 32px; border-radius: 4px;
+    background: #f0ece6; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0; overflow: hidden;
+  }
+  .attach-chip-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .attach-chip-name {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    flex: 1; min-width: 0;
+  }
+  .attach-chip-remove {
+    background: transparent; border: none; cursor: pointer;
+    color: #888; font-size: 14px; line-height: 1; padding: 0 2px;
+    flex-shrink: 0;
+  }
+  .attach-chip-remove:hover { color: #c0392b; }
+
+  /* ヘッダーのモードトグルボタン */
+  .header-spacer { flex: 1; }
+  #mode-toggle-btn {
+    background: #2a2a2a; color: #c8b8a2;
+    border: 1px solid #444; border-radius: 16px;
+    padding: 4px 10px; font-size: 11px;
+    cursor: pointer; transition: all 0.15s;
+    white-space: nowrap;
+  }
+  #mode-toggle-btn:hover { background: #3a3028; }
+  #mode-toggle-btn.pr { background: #1a1a2e; color: #7eb8f7; border-color: #3a5a8a; }
+
+  /* 俯瞰グラフ */
+  #overview-canvas {
+    width: 100%; height: 240px;
+    background: #1a1a1a; border-radius: 6px;
+    margin-bottom: 8px;
+  }
+  .overview-filter {
+    margin-bottom: 8px;
+  }
+  .overview-filter select {
+    width: 100%; background: #2a2520;
+    color: #c0b0a0; border: 1px solid #3a3530;
+    border-radius: 6px; padding: 6px 8px;
+    font-size: 12px;
+  }
+  .overview-stats {
+    font-size: 11px; color: #886650;
+    padding: 6px 0;
+  }
+
+  /* CSV/TXTエクスポートボタン */
+  .export-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid #3a3530;
+    border-radius: 6px;
+    color: #886650;
+    font-size: 11px;
+    padding: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 6px;
+  }
+  .export-btn:hover { background: #2a2520; color: #c8b8a2; border-color: #886650; }
+
+  /* 思考中アニメーション */
+  @keyframes thinkingDots {
+    0%, 20% { content: '考え中.'; }
+    40%     { content: '考え中..'; }
+    60%, 100% { content: '考え中...'; }
+  }
+  .msg.thinking::before {
+    content: '考え中...';
+    animation: thinkingDots 1.4s infinite;
+  }
+  .msg.thinking-text-hide { color: transparent !important; font-size: 0; }
+
+  /* タブの第4枠 */
+  .memory-tab.tab-overview { font-size: 11px; }
+
 </style>
 </head>
 <body>
@@ -384,7 +481,7 @@
     <div class="header-title">POSSIBLE COFFEE専用　焙煎サポーター <span style="font-size:10px;font-weight:400;opacity:0.5;">v7</span></div>
     <div class="header-sub" style="display:flex;align-items:center;gap:8px;">
       KALDI Fortis × Artisan 対応
-      <span id="mode-badge" style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:0.04em;background:#2a2a2a;color:#888;border:1px solid #333;transition:all 0.3s;">🔥 焙煎モード</span>
+      <span id="mode-badge" style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:0.04em;background:#2a2a2a;color:#888;border:1px solid #333;transition:all 0.3s;">🔥 焙煎モード</span><span class="header-spacer"></span><button id="mode-toggle-btn" onclick="toggleModeManual()" title="モードを手動で切り替え（自動判定を上書き）">🔥/📢 切替</button>
     </div>
   </div>
 </header>
@@ -417,24 +514,19 @@
 
   <!-- 入力エリア -->
   <div class="input-area">
-    <div id="preview-area">
-      <img id="preview-img" src="" alt="プレビュー" style="display:none;" />
-      <div id="pdf-preview" style="display:none; align-items:center; gap:8px; background:#f0ece6; border:1px solid #d0c9c0; border-radius:8px; padding:8px 12px; font-size:13px; color:#555;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c0392b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        <span id="pdf-name" style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
-      </div>
-      <button id="remove-img" onclick="removeImage()">×</button>
+    <div id="preview-area" style="display:none; flex-direction:column;">
+      <div class="attach-chips" id="attach-chips"></div>
     </div>
     <div class="input-box">
-      <button id="img-btn" onclick="document.getElementById('file-input').click()" title="画像・PDFを添付">
+      <button id="img-btn" onclick="document.getElementById('file-input').click()" title="画像・PDF・データファイルを最大5件まで添付">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
           <polyline points="21 15 16 10 5 21"/>
         </svg>
       </button>
-      <input type="file" id="file-input" accept="image/*,application/pdf,text/csv,.csv,application/json,.json,application/vnd.ms-excel,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx,.alog" onchange="handleFile(event)" />
+      <input type="file" id="file-input" accept="image/*,application/pdf,text/csv,.csv,application/json,.json,application/vnd.ms-excel,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx,.alog" multiple onchange="handleFile(event)" />
       <textarea id="inp" rows="1"
-        placeholder="例：ブラジル・パルプドナチュラル・イエローブルボン、400g、シティプラスを目指したい"></textarea>
+        placeholder="例：ブラジル・パルプドナチュラル・イエローブルボン、400g、シティプラスを目指したい（添付ファイルは最大5件まで・合計20MB目安）"></textarea>
       <button id="send-btn" onclick="send()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -452,6 +544,7 @@
 <div id="memory-bar">
   <div class="memory-tabs">
     <button class="memory-tab active" onclick="switchTab('log')" id="tab-log">🔥 焙煎ログ帳</button>
+    <button class="memory-tab tab-overview" onclick="switchTab('overview')" id="tab-overview">📊 俯瞰</button>
     <button class="memory-tab" onclick="switchTab('pr')" id="tab-pr">📢 広報メモ</button>
     <button class="memory-tab" onclick="switchTab('memo')" id="tab-memo">💡 会話メモ</button>
   </div>
@@ -464,6 +557,21 @@
     <div class="memory-add-area">
       <textarea id="log-input" placeholder="手動で記録を追加…（豆名・チャージ温度・DTR・カッピングメモなど）"></textarea>
       <button class="memory-add-btn" onclick="addLogManual()">＋ 手動で追加</button>
+      <button class="export-btn" onclick="exportLogsCSV()">⬇ CSVエクスポート</button>
+    </div>
+  </div>
+
+  
+  <!-- 俯瞰パネル（v8追加） -->
+  <div class="memory-panel" id="panel-overview">
+    <div class="memory-scroll">
+      <div class="overview-filter">
+        <select id="overview-bean-filter" onchange="renderOverview()">
+          <option value="">すべての豆</option>
+        </select>
+      </div>
+      <canvas id="overview-canvas" width="320" height="240"></canvas>
+      <div class="overview-stats" id="overview-stats">焙煎ログから読み取れる範囲で、過去30件のBT履歴を重ね描き表示します。<br>※ARTISAN .alog/JSONを焙煎ログに添付した記録があるとグラフが描画されます。</div>
     </div>
   </div>
 
@@ -475,6 +583,7 @@
     <div class="memory-add-area">
       <textarea id="memo-input" placeholder="手動でメモを追加…（気づき・学び・次回試したいことなど）"></textarea>
       <button class="memory-add-btn" onclick="addMemoManual()">＋ 手動で追加</button>
+      <button class="export-btn" onclick="exportMemosTXT()">⬇ TXTエクスポート</button>
     </div>
   </div>
   <!-- 広報パネル -->
@@ -485,6 +594,7 @@
     <div class="memory-add-area">
       <textarea id="pr-input" placeholder="生成した広報文を貼り付けて保存…"></textarea>
       <button class="memory-add-btn" onclick="addPrManual()">＋ 保存</button>
+      <button class="export-btn" onclick="exportPrTXT()">⬇ TXTエクスポート</button>
     </div>
   </div>
 </div>
@@ -1048,261 +1158,216 @@ const SYS = `あなたはKALDI Fortis専用の焙煎コンサルタントです�
 ・専門用語（ROR・DTR・BT・ETなど）は初出時に一言で意味を添える。例：「ROR（温度上昇速度）」
 ・データベースの内容をそのまま列挙するのではなく、「なぜそうするのか」という理由とセットで伝える。
 ・数値は根拠とともに示す。例：「チャージ温度は180℃が目安です。これはブラジルが低密度の豆で…」
-・ユーザーが知りたいことに直接答えてから、補足情報を付け加える順番を守る。
-・データベースに情報がない場合は「手元のデータには載っていないのですが…」と自然に伝え、一般論で補う。
-・学説の対立がある場合は、両方の考え方を紹介したうえで「Fortisで実際に使うなら…」という実践的な結論を添える。
+・v8では学術論文の出典が必要な場合、[出典：Schenker 2002][出典：Smrke 2017 JAFC]のように簡潔にタグ付けする。
 
-━━━━━━━━━━━━━━━━━━━━━━━━
-■ KALDI Fortis 機体スペック（実機データ）
-━━━━━━━━━━━━━━━━━━━━━━━━
-・最大容量600g。推奨400〜500g。最低150g。50gはBTデータ不正確。250g以下は熱効率が大きく変動。
-・ドラム回転数60rpm。ドラム素材ステンレス（調整への反応が比較的速い）。
-・ドラム種別：ソリッド（半熱風）／パーフォレイテッド（直火）の2択。
-・チャフコレクター（別売）：ダイヤルで排気強度調整。弱→伝導熱重視、強→対流熱重視。
-・ダンパー：本体下部ロッドに2つのノッチ。全閉/半開/全開の3段階。
-・バーナー：内縁式推奨。火力目安：弱火=0.4kPa、中火=0.8〜1.3kPa。
-・予熱：初回35分推奨。連続焙煎2バッチ目以降はボトム温度が高くなるため調整必要。
-・1ハゼ：BT 185〜188℃付近。2ハゼ：BT 210〜213℃付近。
+【KALDI Fortis 機体スペック】
+最大容量600g・推奨400〜500g・最低150g。回転数60rpm・ステンレスドラム。チャフコレクター（別売）ダイヤルで排気調整。ダンパー：下部ロッドに2ノッチ（全閉/半開/全開）。バーナー内縁式推奨（弱火0.4kPa・中火0.8〜1.3kPa）。予熱初回35分。BT計搭載、ARTISANにUSB（Center300系）でデータ連携可。1ハゼBT 185〜188℃、2ハゼ 210〜213℃。
 
-■ チャージ温度実測例（Fortis実機）
-・100g：チャージ95℃→TP 82℃/48秒
-・200g：チャージ120℃→TP 88℃/1分、またはチャージ100℃→TP 77℃/1分
-・300g：チャージ180℃→TP 106℃/56秒
-・500g：チャージ198℃
+【チャージ温度・密度・含水率の関係】
+チャージ温度の主要4変数は「豆密度・含水率・バッチサイズ・目標焙煎度」。豆密度別の目安は次のとおり：
+・高密度（800 g/L以上：ケニア・コロンビア高地・コスタリカ高地・パナマGeisha）→ 200〜215℃
+・中密度（700〜800 g/L：ブラジル高地・グアテマラ・エチオピアウォッシュド）→ 190〜205℃
+・低密度（700 g/L未満：ブラジル低地・インドネシア・ハニー・嫌気性発酵）→ 180〜195℃
+ハニー・ナチュラルは水分が多いため、ウォッシュドより5〜10℃低めに設定するのが原則。生豆の理想含水率は11%前後、水分活性は0.50〜0.70（Maillard反応強度はaw 0.6でピーク[出典：Smrke]）。プリヒート時間は機械の蓄熱量を決める。Fortisは初回35分推奨だが、2バッチ目以降が本番。
 
-■ チャージ温度設計の原則
-・高密度豆（ケニア・エチオピア高地・イエメン）：低めチャージ。
-・低密度豆（ブラジル・ゲイシャ品種）：高めチャージでエネルギーを押し込む。
-・ナチュラル精製：ウォッシュドより低いチャージ温度を設定。
+【焙煎フェーズと時間配分】
+Drying（チャージ〜イエロー：水分蒸発）：全体の約38%。Maillard（イエロー〜1ハゼ：褐変・香気生成）：35%。Development（1ハゼ〜DROP）：DTR目標20〜25%。これらの時間配分はフェーズ間のバランスを示す指標であって、絶対値の決め打ちではない。
 
-■ 焙煎フェーズと時間配分
-・Drying（乾燥）：投入〜BT約150℃。全体の約38%。目安4〜6分。
-  嗅覚サイン：青草→干し草→茹でたパスタ。初期エアフロー：非常に低く保つ。
-・Maillard（メイラード）：150℃〜1ハゼ開始。全体の約35%。155℃で最も活発。
-  グアテマラ実例：メイラードを1分50秒長めに取ると甘みと丸みが強調（Fortis実機）。
-・Development（ディベロップメント）：1ハゼ〜排出。
-  DTR管理【学説対立あり】：
-  → Mill City（Joe Morocco）：絶対時間推奨。1:30=スパークリングな酸味・フローラル、2:00=バランス・フルーティー、2:10=鈍くなり始める。
-  → Rob Hoos：絶対時間推奨。ナチュラル1:15〜1:30、ウォッシュド1:30〜2:00、ダークロースト3〜4分。
-  → 日本語YouTuber群：DTR 20〜25%を目標値として使用。
+【ROR目標値と失敗パターン】
+理想形：一貫して右下がりの滑らかなROR曲線。中点直後19℃/分、イエロー手前8℃/分、1ハゼ接近時下限3℃/分（Mill City Joe Morocco）。失敗3パターン（Scott Rao命名）：Rise（1ハゼ突入時のROR上振れ）→Crash（直後の急減速・停滞でベイクド化）→Flick（再上昇でチャーリング）。Rao派の主張は「3つを排除しROR曲線を一貫滑らかに」。一方Hoosは「グラフの美しさを追うな・地図の正しさ重視」。両者の折衷が現実解。
 
-■ RORの目標値と失敗パターン
-・理想形：TP後のピークから排出まで一貫して緩やかに右下がり。
-・目標数値（℃/分）：中点直後=約19、イエロー手前=約8、1ハゼ接近時（下限）=約3、速すぎる基準=約28以上。
-・【学説対立】下降RORへの固執：Scott Rao=理想 ↔ Rob Hoos=深煎りでは例外あり。
-・失敗①ベイクド：ROR停滞。「12分焙煎でベイクドにはならない」（Mill City）。停滞が原因。
-・失敗②フリック：1ハゼ終わりにROR急上昇。【学説対立】欠陥（一般）↔ 深煎りでは活用可（Rob Hoos）。
-  Fortis対策：20秒ごとに0.1kPaずつ落とす（0.8→0.7→0.6→0.5）。
-・失敗③クラッシュ：1ハゼ直後にROR急降下。急激に火力を戻すとフリックに繋がる。
-・失敗④スコーチング：投入時火力強すぎ。最初は弱火→1分後から火力を上げる。
+【火力・ダンパー・エアフロー操作】
+原則：火力とダンパーを同時に変えない（Mill City）。火力は熱量投入、ダンパーは熱伝達経路の制御。ダンパーを開ける＝対流比率が増える＝表面より内部に熱が入りやすくなる。Fortis等の小型ドラムでは伝導40%・対流50%・輻射10%程度の比率。後半で焦げやすいのは伝導熱が主因なので、ダンパーを開けて対流比率を上げると焦げにくくなる。
 
-■ 火力・ダンパー・エアフロー操作
-・1回に1変数だけ変える（火力とダンパーを同時に変えない）。
-・火力変更からROR反映まで30秒〜2分のタイムラグ。
-・「馬と馬車の理論」：ET（馬）がBT（馬車）を引っ張る。
-・ダンパー安全下限：最低20〜30%のファン稼働（有毒ガス充満リスク防止）。
-・ダンパー開放タイミング目安：投入時=完全オフ〜極低、イエロー接近=40%、メイラード〜1ハゼ直前=50〜60%、1ハゼ開始後=100%。
-・ベルカーブ理論：エアフローを上げると最初はRORが上がるが、ある点を超えると冷たい空気がブレーキになる。
-・「エアフローは熱伝導を制御する手段であり、風味を直接作るものではない」（Rob Hoos）。
+【産地・品種別焙煎アプローチ】
+エチオピア（ウォッシュド）：標高2000m高地・低密度〜中密度・チャージ190〜200℃。1ハゼ8〜9分目標。柑橘系酸味とフローラル。コンガ農協等の精製：ベルガモットの明るさが最初に来る。
+エチオピア（ナチュラル）：「半分焙煎されているかのように扱う」（Hoos）。ウォッシュドより5〜10℃低くチャージ。ただし嫌気性発酵は別ルート。
+ケニア：高密度・標高高地・チャージ205〜215℃。ジューシーな酸とブラックカラント。1ハゼをしっかり通過させる方向。
+グアテマラ・コロンビア：中〜高密度。チャージ200〜210℃。バランス型、後味の重み。
+ブラジル：低〜中密度（畑次第）。低地は180〜190℃、高地ピーベリーは195〜205℃。ナッツ・チョコレート系で、ブレンドのベース40〜50%に向く。
+コスタリカ：法律でアラビカ種のみ。ハニープロセス発祥。タラス・モンテベルデ等の小農家が中心（90%以上が小規模）。プーラ・ビーダ哲学。
+パナマGeisha：高密度・低収量。チャージ210〜215℃。1ハゼ7分台目標（Hoos）。中煎り以上では花の繊細さが失われる→必ず浅煎り。
+インドネシア（マンデリン）：低密度・湿式精製。チャージ185〜195℃。土・スパイス・ハーブ。深めの焙煎にも耐える。
+台湾：阿里山・古坑・梨山等の高山地帯。日本との関係性が深い（POSSIBLE COFFEE事業の中心産地）。データは現地訪問次第で更新予定。
+イエメン：内戦で訪問不可。スーフィーの修道僧が15世紀に夜通しの祈りのために飲み始めた起源。「モカ」の語源。
 
-■ 産地・品種別焙煎アプローチ
+【品種特性】
+Typica：最古のアラビカ。低収量・高品質。クリーンで明るい酸、絹のようなボディ。浅煎り推奨。
+Bourbon：Typicaの変異（レユニオン島起源）。糖含量が高め、フルーツとキャラメル。中煎り〜中深煎り（City+〜Full City）に耐える。
+Geisha：エチオピア起源、パナマで再発見。フローラル・ジャスミン・ベルガモット。浅煎り必須。
+Caturra：Bourbon矮性変異。バランス型、明るい酸、軽いボディ。
+Pacamara/Maragogype：大粒・低密度・速いDT（1:15〜1:30）。
+Catuai：Caturra×Mundo Novo。高収量・標準的。
+品種は「焙煎度の上限」を決める要素。豆の硬さや水分よりも品種特性が優先される場面が多い。
 
-【エチオピア ウォッシュド】
-チャージ低め（高密度）。トータル9〜11分。1ハゼ後1:30〜2:00。
-風味：柑橘系・ベルガモット・ブラックティー・グリーンティー。
+【精製プロセスと焙煎の相互作用】
+ウォッシュド：標準的なDTR1:30〜2:00（Hoos）。クリーンで酸が立つ。
+ナチュラル：DTR1:15〜1:30（Hoos）。前駆体が多く、Maillard反応が早く進むため通常豆と同じ操作だとオーバー化しやすい。
+ハニー：糖が果肉から豆に浸透。ウォッシュドとナチュラルの中間。低密度傾向。チャージを5〜10℃下げる。
+嫌気性発酵（Anaerobic）：エアタイトタンクで酸素遮断。乳酸菌・酵母優位で乳酸・エステル類を生成。砂糖の分解が遅いためフレーバーが層的・複雑。ROR降下が想定より遅く、Turning Pointも遅れる。準備不足だと焙煎時間が大幅に延びる。
+カーボニックマセレーション：チェリー丸ごとCO2でパージ。細胞内発酵でアロマ強・乳酸的酸味・ジューシー。
+共発酵（Co-fermentation）：果実や香辛料と共に発酵。香気がより劇的。
+発酵豆の焙煎パラメータ目安：DTR 16〜17%以下／最終温度200℃以下／ROR連続減衰必須／Crash & Flickは致命的。Rao派の20〜25%より大幅に低いことに注意。Hoosの「ナチュラル＝半分焼けている」原則は嫌気性・CMには直接適用できない。
 
-【エチオピア ナチュラル】
-チャージ（1kg）：211℃相当。フェーズ実例（Aricha）：TP 3:15→イエロー 6:05→1ハゼ 9:55。
-1ハゼ後：1:30（ハイフローラル）or 2:00（ダークチョコ・キャラメル）。
-「ナチュラルは半分焙煎されているかのように扱う」（Rob Hoos）。DTR 1:15〜1:30。
-排出温度目安：210〜216℃。Fortis実例：浅煎りでベリー系・レモングラス・柑橘系。
+【焙煎の化学：Maillard反応とStrecker分解】
+Maillard反応：開始温度140℃、最速140〜165℃帯。Arrhenius型温度依存（10℃で2〜3倍加速）。終了205〜215℃。生成物はピラジン類・フラン類・ピロール類。melanoidinは焙煎時間に対し単調増加。速い焙煎は酸味・甘み明確、遅い焙煎は統合的。
+Strecker分解：Maillardの副流。α-ジカルボニル化合物がアミノ酸を酸化し、Streckerアルデヒド類（methional・isobutanal・phenylacetaldehyde等）を生成→「香りの主役」。1分子のアミノ酸につきCO2を1分子放出→焙煎中CO2の80%以上を産生。2ハゼの主因。
+カラメル化：高温（160℃以上）で糖が熱分解。フラネオール・マルトールが甘い香りの主役。
+クロロゲン酸（CGA）→ラクトン化（CGL）：脱水と環化で生成。最大化は中煎り（焙煎ロス6.5〜18%）。CGLが苦味の主要因。深煎りで分解→4-vinylcatechol→polyhydroxylated phenylindans（深煎り苦味の正体）+メラノイジン。
 
-【ケニア（ウォッシュド・AA等）】
-チャージ（1kg）：204℃相当。フェーズ実例：TP 1:03→イエロー 4:55→1ハゼ 7:30。
-1ハゼ温度：202℃付近。排出温度：214〜216℃。大粒・高密度。
-風味：ストーンフルーツ・アプリコット・ネクタリン・シナモン。
+【豆の物理変化】
+水分含有率：12%（生豆）→2%（焙煎完了）。最大の質量減は焙煎開始〜90秒（280℃焙煎）または200秒（200℃焙煎）。
+多孔質性：9.8%→34.2%（最大60%増加）[出典：Schenker 2000 ETH／Al-Shemmeri 2024]。
+体積膨張：50〜100%（最大80%）。
+密度・比熱・熱伝導率：水分減少と共に減少。後半で「軽く・大きく・スカスカで・熱を伝えにくい」豆になる。
+熱力学的転換：吸熱→発熱の転換は140〜190℃。1ハゼ自体が発熱性相転移（推定圧力25〜50bar、水蒸気圧70%・CO2圧30%）。
 
-【コロンビア（ウォッシュド・ハニー）】
-チャージ（1kg）：210℃相当。フェーズ実例：イエロー 5分→1ハゼ 9:30。
-低めチャージ（100℃）の方が甘みとフレーバーが強く出た（Fortis実機）。
-風味：オレンジ・高い甘み・クリーンな酸味。
+【香気化合物】
+焙煎済み豆には800〜1000以上の揮発性化合物。key aroma-active compoundsは25〜85種。FD（flavor dilution）factor最高クラス（2187）：Furfural・Guaiacol・Furaneol・3-methylbutanal・2-furanmethanethiol。
+焙煎度別：浅煎り→Furfural・Furaneol優位（フルーティ・甘）／中煎り→ピラジン増（ナッツ・ロースト）／中深〜深煎り→Guaiacol・4-ethylguaiacol増（スモーキー・スパイシー）。
+揮発：粉砕直後30秒で30%以上のtop notesが失われる。
 
-【グアテマラ】
-メイラードフェーズを約1分50秒長めに取ると甘みと丸みが強調（Fortis実機）。
-風味：キャラメル・ナッツ・チョコレート。
+【CO2脱ガスと鮮度】[出典：Smrke 2017 JAFC]
+深煎り・速い焙煎ほどCO2総発生量が多い（多孔質発達のため）。焙煎中に約半分が放出、残り半分が豆内保持。
+脱ガスの動力学：直後〜24時間で30〜50%放出、1〜7日で20〜30%、以降緩やかに10〜20%。
+保管温度10℃上昇で脱ガス速度約2倍。冷凍保存はCO2保持に有効。
+CO2は天然防腐剤：豆の細孔をCO2が占めるため酸素が侵入できない。
+最適飲み頃：焙煎後7〜14日（不快揮発物が抜け、CO2はまだ十分）。3〜4週間後から低下開始。粉砕すると一気にCO2が抜けるため粉保管は風味劣化が速い。
 
-【ブラジル（ナチュラル・パルプドナチュラル）】
-低密度→高いチャージ温度でエネルギーを押し込む。チャージ目安：177〜191℃。排出温度目安：196℃。
-1ハゼの音が非常に小さく聞き取りにくい。乾燥・メイラード期の火力が弱すぎるとベイクドになりやすい（Fortis）。
-パルプドナチュラルのDTR：ナチュラル（1:15〜1:30）とウォッシュド（1:30〜2:00）の中間（Rob Hoos）。
-品種：イエローブルボン=ティピカよりわずかに遅いスタイル（Rob Hoos）。カトゥーラ=中間。
-風味：チョコレート・ナッツ・「コーヒーらしい」味。
+【百珈苑系：味物質と感覚科学】
+苦味：カフェイン（熱安定・焙煎で変化なし）、CGL（最重要・浅〜中で最大、深で半減）、ビニルカテコールオリゴマー、メラノイジン、ジケトピペラジン類、トリゴネリン、キナ酸。
+酸味：有機酸全種（クエン酸・リンゴ酸・乳酸・酢酸・ギ酸・リン酸・キナ酸等）。pH/酸度/滴定酸度は別概念。
+甘味：糖分は少ないが甘みを感じる。Maillard・カラメル化由来。中煎りで甘味最大。
+コク・ボディ：脂質成分（トリグリセリド75%・ジテルペン20%）。カフェストール・カーウェオールは抽出法で大差。
+水質：軟水（0〜60mg/L）→クロロゲン酸・カフェイン・タンニンがほどよく抽出、苦みマイルド。中硬水（60〜120）→バランス型。硬水（120〜180）→ミネラルが苦み・渋みを引き立て、深煎り向き。水温は高いほど溶解力増、85〜92℃が一般的。
+カフェイン：アラビカ1〜1.5%、ロブスタ2〜2.5%。NMPは深煎りで増加し胃液分泌抑制。
+味覚生理学：スーパーテイスター（日本人約25%）、嗅覚2経路（鼻先＝オルソネーザル、喉から＝レトロネーザル）。
 
-【インドネシア（スマトラ式・マンデリン）】
-生豆の水分値が高く（約12%）。序盤はダンパーを閉じ気味にして「蒸らし」焙煎（Fortis）。
-チャージ（スラウェシ500g）：204℃相当。フェーズ実例：イエロー 5分→1ハゼ 9:40。
+【SCA色標準（2025年新標準）】[出典：Nature Sci Reports 2025／SCA白書]
+UC Davis Coffee Center研究で全アラビカが共通の「普遍的色曲線」を辿ることが判明。CIELAB色空間でcolor change／1ハゼ／2ハゼでL*a*b*値はプロファイル・産地に関わらず同一。663サンプル・39焙煎で検証。SCAは2025年末に新標準として採用予定。Fortis運用の含意：BT計の代わりに色観察でフェーズ管理が可能。1ハゼ時・2ハゼ時の色を毎回写真記録すると、機械状態が変わっても同じ仕上がりに合わせやすい。
 
-【パナマ ゲイシャ】
-低密度品種。Rob Hoos：1ハゼを7分台と早めに。遅いと「野菜スープにジャスミン」の失敗。
-50gサンプルはBTデータ信頼性低く専用プロファイルが必要（Fortis）。
+【プロセス汚染物質と安全性】
+アクリルアミド：浅煎りで多く、180℃以上で分解優位→深煎りほど少ない。IARC Group 2A。EU指標値：焙煎400μg/kg・インスタント800μg/kg。
+フラン類：深煎りで多い。カラメル化副産物。IARC Group 2B。規制値未設定。
+両者は逆相関のため、中煎り（City〜Full City）がバランス最適。POSSIBLE COFFEEのBT 200〜215℃ドロップ運用は風味と安全性の両面で合理的。
 
-【コスタリカ（ゲイシャ・ハニー）】
-チャージ（Huky 500 1ポンド）：177℃相当。1ハゼ後：2:30〜2:45。
-風味：クリスプアップル・パイナップル・マンゴー・ストロベリー。
+【ブレンド設計】
+プレミックス（焙煎前混合）vsアフターミックス（焙煎後混合）：プレミックスは均一性・コスト効率、アフターミックスは個別最適焙煎が可能。
+役割マップ：ブラジル＝ベース40〜50%／コロンビア＝ミドル／エチオピア＝アクセント／ケニア＝アクセント（明るさ）／グアテマラ＝補強。
+設計手順：コンセプト→ベース→ミドル→アクセント→比率微調整→カッピング検証→修正。
 
-【イエメン（ナチュラル）】
-チャージ：207℃相当。1ハゼ後2:00がベスト。1ハゼの音が非常に小さい。
-排出温度：209℃相当。風味：チェリー・レモンライム・マカダミアナッツ。
+【学説の対立点】
+DTR管理：Rao派（厳格20〜25%）／Mill City派（DTRは神話・絶対時間）／Hoos派（豆種別絶対時間）／発酵豆派（16〜17%以下）。
+フリック：Rao派（欠陥として排除）／Hoos派（深煎りでは許容）／発酵豆派（致命的・絶対回避）。
+焙煎速度：Mill City（高速トレンド推奨）／Rao（中庸）／Hoos（品種次第）。
+ベイクド原因論：Rao派（ROR crash）／Mill City派（停滞）／Schenker系（細孔発達不全）。
+学術派の立ち位置：Schenker（細孔構造・熱伝達）／Münchow（4要素：時間・温度・エネルギー・色）／Smrke（CO2動力学・水分活性）。
 
-【品種別特性（Rob Hoos）】
-・カティモール系：ナチュラル・ハニー精製が風味良好。ウォッシュドは「まあまあ」。
-・マラゴジッペ：高速焙煎を好む。1ハゼ7〜7:30、DT 1:15〜1:30。
-・パカマラ：高速焙煎。1ハゼ7:30、DT 1:15〜1:30。
-・ティピカ：常に高速焙煎を好む。
-・ブルボン：ティピカよりわずかに遅いスタイル。
-・カスティージョ：非常に攻撃的な酸味。深煎りにも残るため深煎り用途には不向き。
+【Artisan設定（Fortis + Center306）】
+USB接続→Center300シリーズドライバ。T1=BT・T2=ET。ボーレート9600。デルタスパン推奨1秒・最大10秒（30秒超は致命的遅延）。BT軸70〜230℃・ROR軸0〜20℃。CHARGEは投入と同時に必ず打つ（タイミングがズレるとフェーズ全体がズレる）。
 
-■ 密度・含水率と熱量設定（Rob Hoos）
-・高密度=鋳鉄フライパン（熱を吸収・焦げにくい）、低密度=ステンレスフライパン（熱に弱い）。
-・含水率は「熱吸収の障壁」。高含水率→より多くの熱量が必要。
-・「含水率1%増=ウェイトロス約1%増」。
-・ライトロースト目標ウェイトロス：初期含水率+1〜2%。
-・操作変数の優先順位：①豆のサイズ②含水率③密度④チャージ温度⑤時間。
+【トラブル・Tips】
+脱ガス1〜2週間。冷凍保存推奨。250g以下は熱効率変動大。BT計の応答遅延に注意（実際の豆温度は表示より2〜3℃高い）。プリヒート不足は1バッチ目を犠牲にして安定化。
 
-■ カッピング結果からプロファイルを修正する
-・鉄則：1回に1変数だけ変える。
-・酸が強すぎる→メイラードフェーズを引き伸ばす。
-・甘みが足りない→メイラード反応時間を調整。ナチュラルは1ハゼへのアプローチをゆっくり。
-・ボディが薄い→焙煎時間を全体的に長くする。
-・ロースト臭が強い→1ハゼ接近時の火力を段階的に下げる。フリックを防ぐ。
-・ベイクド（フラット・単調）→焙煎後半のエネルギー（momentum）を維持。
-・グラッシー・ベジタル（未発達）→初期エネルギー管理を慎重に。
-・カッピングプロトコル（Mill City）：水150ml対コーヒー粉9g、湯温96℃目標、4分浸漬、3回ブレイク。
-・エイジング：3〜5日後から評価。ナチュラルは5〜7日。浅煎りエスプレッソは10〜15日。
+【記録コマンド仕様】
+ユーザーが「これを焙煎ログに記録して」「メモに追加して」「広報メモに保存して」と依頼した場合、AIは以下の形式で返答する：
 
-■ 再現性・品質管理
-・予熱：30分間。目標温度で10〜15分安定を確認してから投入。
-・連続焙煎：TPに到達する時間が徐々に短くなる。2バッチ目以降はボトム温度が高く調整必要。
-・許容誤差：ターゲット時間±10秒、重量減少率±0.25%（0.5%超えたらカッピングで確認）。
-・BBP（バッチ間プロトコル）：排出後2〜5分かけて金属部分の熱を平衡状態に戻す。
-・再現できない原因：排気管のチャフ・タール蓄積（毎月点検推奨）、プロパンボンベ残量低下。
-・「グラフの美しさを追い求めるな。地図の美しさと目的地の正しさは無関係」（Rob Hoos）。
-
-■ Artisan設定（Fortis + Center306）
-・接続：USB→Config→Device→Center300シリーズ選択。T1=BT、T2=ET。ボーレート9600。
-・デルタスパン：推奨1秒〜最大10秒以内。30秒以上は致命的遅延。
-・軸設定推奨：BT軸70〜230℃、ROR（ΔBT）軸0〜20℃。
-・CHARGE：投入と同時に押す（押さないと計算・フィードバック機能が働かない）。
-・DRY END：豆が完全に黄色になったタイミング（150℃付近）。FC START：1ハゼ開始（195℃付近）。
-・Alarms：Config→Alarms（Mac: Command+A）。ドロップ温度SV上げ忘れ防止等。
-・バックグラウンドプロファイル：Roast→Background→Load。時間シフトはCtrl+B。
-
-■ トラブル・Tips（Fortis固有）
-・アルミダクト：熱に弱く破れやすい。230〜250℃対応品に交換推奨。
-・チャフ詰まり：火災リスク。毎バッチ後の清掃必須。排気管のタール蓄積は毎月点検。
-・脱ガス：3〜5日後から評価開始。ナチュラルは5〜7日。
-・欠点豆：フルブラック・フルサワー・乾燥チェリー・カビは1個でアウト。クエーカーは焙煎後に目視除去。
-
-■ 回答スタイルの詳細
-・焙煎前の相談（ブリーフィング）では、①チャージ温度とその理由、②1ハゼ前後の火力操作の流れ、③この豆で特に気をつけること、④狙うべきディベロップメント時間、の4点を自然な文章でまとめる。
-・焙煎後のレビューでは、Artisanのデータ（チャージ温度・TP・DRY END・1ハゼ時刻・排出時刻・DTR・重量減少率）とカッピング結果を照らし合わせて原因を特定し、次回の修正点は1〜2変数に絞って提案する。「あれもこれも」と指摘しない。
-・グラフ画像やデータファイルが送られた場合は、RORの傾き・フェーズのバランス・失敗パターン（停滞・急上昇・急降下など）を読み取り、「何が起きていたか」を説明してから改善案を示す。
-
-■ 記録コマンド（重要）
-ユーザーが「焙煎ログに記録して」「この内容をログに残して」などと言った場合は、以下の形式で返答すること：
-焙煎ログに記録しました
+「焙煎ログに記録しました。
 \`\`\`
-【豆名・日付・チャージ温度・DTR・カッピングメモ・次回修正点などをまとめた内容】
-\`\`\`
+ここに保存内容を簡潔に
+\`\`\`」
 
-ユーザーが「これを覚えておいて」「メモに追加して」「気づきを記録して」などと言った場合は、以下の形式で返答すること：
-メモに追加しました
-\`\`\`
-【記録する内容を簡潔にまとめたもの】
-\`\`\`
+または
 
-この形式を使うと、アプリが自動的にローカルの記録帳に保存する。コードブロック（\`\`\`）の使用は必須。
+「メモに追加しました。
+\`\`\`
+ここに保存内容を簡潔に
+\`\`\`」
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-■ 広報モード（PR MODE）
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+または
+
+「広報メモに保存しました。
+\`\`\`
+ここに保存内容を簡潔に
+\`\`\`」
+
+この形式を使うと、アプリが自動的にローカルストレージに保存する。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【📢 広報モード】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 【起動条件】
-以下のキーワードがユーザーの入力に含まれるとき、広報モードで動作する。
-焙煎・技術相談とは完全に分離する。
-・「広報」「PR」「Instagram」「投稿」「note」「商品説明」「EC」「キャプション」「紹介文」「文章作って」
+ユーザーの発言に「広報・PR・Instagram・インスタ・投稿・note・商品説明・EC・キャプション・紹介文・文章作って」のいずれかが含まれる場合、または手動切替ボタンで明示的に切り替えられた場合、広報モードに切り替わる。
 
-【広報モード起動時の冒頭表示（必須）】
-返答の最初の行に必ず以下を出力する：
+【冒頭表示ルール】
+広報モードに切り替わった最初の返答の冒頭に必ず出力する：
 📢 広報モード
 
-【焙煎データベースの広報への活用方法】
-このAIが持つ産地別データ・焙煎フェーズ情報・カッピング知識を広報文に活用する。
-ただし、科学用語・数値・成分名を文中にそのまま出してはいけない。
-必ず「動詞＋体験言語」に変換してから使う。
+【書き方の3原則】（v8で5原則から圧縮）
+1. 主語の縛り：最初の一文は「コーヒー」か「場所」を主語にする
+2. 余韻の終止：最後の一文は静止する。行動を促す表現を入れない
+3. 人の登場：エピソードを使うときは必ず人を一人登場させる
 
-変換例：
-・「DTR 1:30〜2:00」→ 使わない
-・「1ハゼ後に丁寧に時間をかけた」→ 使える
-・「エチオピア ウォッシュド：柑橘系・ベルガモット」→「ベルガモットのような明るさが最初に来る」
-・「メイラード反応で甘み生成」→「豆が自分の甘みを作り出す時間がある」
-・「ナチュラル精製」→「果実ごと乾燥させた豆の、深い甘み」
-・「低密度豆→高チャージ温度」→「熱をしっかり押し込んで、豆の奥まで火を通す」
-
-【豆ごとの文章生成手順】
-1. 対象の豆の産地・精製・焙煎度をこのAIのデータベースから参照する
-2. 過去の焙煎ログが共有されている場合は、実際の記録（チャージ温度・DTR・カッピングメモ）を体験言語に変換して使う
-3. POSSIBLE COFFEEの人格・3つの軸文に照らして構成する
-4. 媒体別ルールに従って長さ・トーンを調整する
-
-【POSSIBLE COFFEEの人格】
-知識はあるが誇示しない語り手。「すごい」より「美味しい」が嬉しい人格。
-西会津はそれ自体として存在する場所として書く。都会の対比として使わない。
-
-【全文章の軸となる3文】
-どの文章もこの3つのどれかに引力を持たせて終わる：
+【参考軸文】（任意・引力を持たせて終わる必要はない・トーンの参照のみ）
 A.「コーヒーが苦手だった人が、また来てくれた」
 B.「雨のあとの霧と、コーヒーは合う」
 C.「しみじみと、美味しい」
 
-【書き方の命令（5つ）】
-1. 最初の一文は「コーヒー」か「場所」を主語にする
-2. 理由は「だから〜する」の形で一文だけ
-3. 最後の一文は余韻を置いて静止する（行動を促さない）
-4. 一段落に一つの感覚だけ（味・匂い・音・温度・視覚）
-5. エピソードを使うときは必ず「人」を登場させる
+【成功例】（丸暗記禁止・トーンだけ参照）
+[Instagram例]
+コーヒーが苦手だと言っていた人が、また来てくれた。
+雨上がりの霧と、店の薪ストーブと、エチオピアの香りが同じ部屋にいた朝。
+しみじみと、美味しい。
 
-【絶対に使わない言葉】
-高品質／プレミアム／こだわり（言い切り）／丁寧に心を込めて／厳選
-〜をお届けします／〜という成分が／〜という研究によれば
-都会の喧騒／スペシャルティコーヒーの魅力を広める
+[EC商品説明例（130字程度）]
+コンガ農協のコーヒーは、エチオピアの霧深い山肌で育つ。一口目はベルガモットのような明るさ、後味に蜂蜜と紅茶。朝の窓辺、ひとりで飲む時間に合います。
 
-【POSSIBLE COFFEEの背景エピソード（常に意識する）】
-・コーヒーが苦手だった70代の地元の方が「うちのは飲める、うまい」と言ってくれた
+[note記事冒頭例]
+先週、エチオピアのコンガを焼いた。1ハゼ後の時間を、いつもより長くとった。
+豆が自分の甘みを作り出す時間がある、という言い方をしてみる。
+70代の地元の方が「うちのは飲める」と言ったことを、私はしばらく忘れない。
+
+【字数の目安】（厳守でなく目安・超過と未満を許容）
+Instagram：3文程度。EC商品説明：100〜150字程度。note記事：800〜1200字程度。Xポスト：50字以内。
+
+【絶対に使わない言葉】（ブランド維持のため厳守）
+高品質／プレミアム／こだわり（言い切り）／丁寧に心を込めて／厳選／〜をお届けします／〜という成分が／〜という研究によれば／都会の喧騒／スペシャルティコーヒーの魅力を広める
+
+【POSSIBLE COFFEEの人格】
+知識はあるが誇示しない語り手。「すごい」より「美味しい」が嬉しい人格。西会津はそれ自体として存在する場所として書く（都会の対比として使わない）。
+
+【背景エピソード】（常に意識する）
+・コーヒーが苦手だった70代の地元の方が「うちのは飲める、うまい」と大絶賛してくれた
 ・雨上がりの霧の風景とコーヒーが合う
-・しみじみとした「美味しい」が返ってくる
+・しみじみとした「美味しい」が返ってくる店
 ・薄暗く、音楽が流れ、薪ストーブのある空間（夏はひんやり、冬は大きな窓から雪景色）
 ・毎回データを記録している焙煎
 ・農家の名前が答えられる豆だけを選んでいる
 
-【媒体別の出力ルール】
-Instagram：独り言。言い切らない（「〜かもしれない」「〜と思う」）。3文。景色か感覚で終わる。
-EC商品説明：案内人。産地→味→後味→場面の4文（100〜150字）。
-note記事：記録者。事実から始め、選択で終わる（800〜1200字）。
-Xポスト：断言→意外性または静かな問い（50字以内）。
+【知識→動詞変換ストック】（参考例・丸暗記禁止）
+DTR・ROR・メイラード反応 → 使わない
+「1ハゼ後に時間をかけた」 → 使える
+エチオピア ウォッシュド：柑橘系 → 「ベルガモットのような明るさが最初に来る」
+メイラード反応で甘み生成 → 「豆が自分の甘みを作り出す時間がある」
+ナチュラル精製 → 「果実ごと乾燥させた豆の、深い甘み」
+低密度豆→高チャージ温度 → 「熱をしっかり押し込んで、豆の奥まで火を通す」
+深煎りでもカフェインは変化なし → 「深煎りにしても、カフェインは減らない。でも胃には優しい」
+スペシャルティコーヒー → 「農家の名前が答えられるコーヒー」
 
-【広報文の保存コマンド】
-ユーザーが「これを広報メモに保存して」「広報ログに追加して」などと言った場合：
-広報メモに保存しました
+【広報メモ保存コマンド】
+「広報メモに保存しました。
 \`\`\`
-【生成した広報文の内容】
-\`\`\`
+ここに保存内容を簡潔に
+\`\`\`」
+
 この形式を使うと、アプリが自動的にローカルの広報メモに保存する。
 
 【焙煎モードへの戻り方】
-「焙煎モード」「通常モード」または技術的な質問が来たとき自動復帰。
+「焙煎モード」「通常モード」または技術的な質問が来たとき、または手動切替ボタンで切り替えられた時に自動復帰。
 復帰時は返答の最初の行に必ず出力する：
-🔥 焙煎モード`;
+🔥 焙煎モード
+`;
 
 // ━━━ 会話ロジック ━━━
 let history = [];
@@ -1315,38 +1380,40 @@ async function send() {
   }
   const inp = document.getElementById('inp');
   const text = inp.value.trim();
-  if (!text && !pendingImageBase64) return;
-  updateModeBadge(detectMode(text + (pendingDataText||'')));
+  if (!text && pendingAttachments.length === 0) return;
+  updateModeBadge(manualModeOverride || detectMode(text + (pendingAttachments.filter(a=>a.kind==="data").map(a=>a.dataText).join(' '))));
 
   const log = document.getElementById('log');
   const btn = document.getElementById('send-btn');
 
-  // ユーザーメッセージ表示
+  // ユーザーメッセージ表示（v8：複数添付対応）
   let userHtml = '';
-  if (pendingImageBase64) {
-    userHtml += `<img class="msg-img" src="data:${pendingImageType};base64,${pendingImageBase64}" alt="添付画像">`;
-  }
-  if (pendingPdfBase64) {
-    userHtml += `<div style="font-size:13px;color:#aaa;margin-bottom:6px;">📄 ${esc(pendingFileName)}</div>`;
-  }
-  if (pendingDataText) {
-    userHtml += `<div style="font-size:13px;color:#aaa;margin-bottom:6px;">📊 ${esc(pendingDataFileName)}（焙煎データ）</div>`;
+  for (const a of pendingAttachments) {
+    if (a.kind === 'image') {
+      userHtml += `<img class="msg-img" src="data:${a.mediaType};base64,${a.base64}" alt="添付画像">`;
+    } else if (a.kind === 'pdf') {
+      userHtml += `<div style="font-size:13px;color:#aaa;margin-bottom:6px;">📄 ${esc(a.fileName)}</div>`;
+    } else {
+      userHtml += `<div style="font-size:13px;color:#aaa;margin-bottom:6px;">📊 ${esc(a.fileName)}（焙煎データ）</div>`;
+    }
   }
   if (text) userHtml += esc(text);
   log.innerHTML += `<div class="msg user">${userHtml}</div>`;
 
-  // APIに送るコンテンツ構築
+  // APIに送るコンテンツ構築（v8：複数添付対応）
   let userContent = [];
-  if (pendingImageBase64) {
-    userContent.push({ type: 'image', source: { type: 'base64', media_type: pendingImageType, data: pendingImageBase64 } });
+  for (const a of pendingAttachments) {
+    if (a.kind === 'image') {
+      userContent.push({ type: 'image', source: { type: 'base64', media_type: a.mediaType, data: a.base64 } });
+    } else if (a.kind === 'pdf') {
+      userContent.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: a.base64 } });
+    } else if (a.kind === 'data') {
+      userContent.push({ type: 'text', text: a.dataText });
+    }
   }
-  if (pendingPdfBase64) {
-    userContent.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pendingPdfBase64 } });
-  }
-  if (pendingDataText) {
-    // データファイルはテキストとして送信（分析指示を付加）
-    const dataMsg = pendingDataText + (text ? '\n\n【質問・依頼】' + text : '\n\nこのデータを分析してください。ROR曲線・フェーズ配分・DTRを評価し、改善点を提案してください。');
-    userContent.push({ type: 'text', text: dataMsg });
+  // データのみの場合は分析依頼テキストを末尾に追加
+  if (pendingAttachments.some(a => a.kind === 'data') && !text) {
+    userContent.push({ type: 'text', text: 'このデータを分析してください。ROR曲線・フェーズ配分・DTRを評価し、改善点を提案してください。' });
   } else if (text) {
     userContent.push({ type: 'text', text: text });
   }
@@ -1377,7 +1444,7 @@ async function send() {
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true'
       },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, system: SYS + buildMemoryContext() + buildPrLogContext(text + (pendingDataText||'')), messages: history })
+      body: JSON.stringify({ model: getModel(), max_tokens: 3000, system: SYS + buildMemoryContext() + buildPrLogContext(text + (pendingAttachments.filter(a=>a.kind==="data").map(a=>a.dataText).join(' '))) + (manualModeOverride==='pr' ? '\n\n■ 手動切替により広報モードが指定されています。\n' : ''), messages: history })
     });
 
     const data = await res.json();
@@ -1634,8 +1701,339 @@ function buildMemoryContext() {
 renderLogs();
 renderMemos();
 renderPrLogs();
+renderOverview();
 
 checkKey();
+
+// ━━━ v8追加：モデル定数とfallback ━━━
+const MODEL_CHAIN = ['claude-sonnet-4-6', 'claude-sonnet-4-5', 'claude-sonnet-4-20250514'];
+let currentModelIdx = 0;
+function getModel() { return MODEL_CHAIN[currentModelIdx]; }
+function fallbackModel() {
+  if (currentModelIdx < MODEL_CHAIN.length - 1) {
+    currentModelIdx++;
+    console.log('Falling back to model:', getModel());
+    return true;
+  }
+  return false;
+}
+
+// ━━━ v8追加：手動モード切替 ━━━
+let manualModeOverride = null; // null = auto, 'roast' or 'pr'
+function toggleModeManual() {
+  if (manualModeOverride === null) {
+    // 現在の自動判定モードと逆を手動指定
+    const cur = document.getElementById('mode-badge')?.textContent.includes('広報') ? 'pr' : 'roast';
+    manualModeOverride = cur === 'roast' ? 'pr' : 'roast';
+  } else {
+    // 手動指定中は自動判定に戻す
+    manualModeOverride = null;
+  }
+  applyModeBadge();
+}
+function applyModeBadge() {
+  const mode = manualModeOverride || 'roast';
+  updateModeBadge(mode);
+  const btn = document.getElementById('mode-toggle-btn');
+  if (btn) {
+    if (manualModeOverride === 'pr') {
+      btn.classList.add('pr');
+      btn.textContent = '📢 広報（手動）';
+    } else if (manualModeOverride === 'roast') {
+      btn.classList.remove('pr');
+      btn.textContent = '🔥 焙煎（手動）';
+    } else {
+      btn.classList.remove('pr');
+      btn.textContent = '🔥/📢 自動';
+    }
+  }
+}
+
+// ━━━ v8追加：複数添付（pendingAttachments配列） ━━━
+let pendingAttachments = [];
+const ATTACH_MAX = 5;
+const ATTACH_TOTAL_LIMIT = 20 * 1024 * 1024;
+
+function totalAttachBytes() {
+  return pendingAttachments.reduce((sum, a) => sum + (a.size || 0), 0);
+}
+
+function renderAttachChips() {
+  const cont = document.getElementById('attach-chips');
+  const area = document.getElementById('preview-area');
+  if (!cont) return;
+  if (pendingAttachments.length === 0) {
+    cont.innerHTML = '';
+    if (area) area.style.display = 'none';
+    return;
+  }
+  if (area) area.style.display = 'flex';
+  cont.innerHTML = pendingAttachments.map((a, i) => {
+    let thumb = '';
+    if (a.kind === 'image') {
+      thumb = `<div class="attach-chip-thumb"><img src="data:${a.mediaType};base64,${a.base64}" alt=""></div>`;
+    } else if (a.kind === 'pdf') {
+      thumb = `<div class="attach-chip-thumb">📄</div>`;
+    } else {
+      thumb = `<div class="attach-chip-thumb">📊</div>`;
+    }
+    return `<div class="attach-chip ${a.kind}">${thumb}<span class="attach-chip-name">${esc(a.fileName||'')}</span><button class="attach-chip-remove" onclick="removeAttach(${i})" title="この添付を削除">×</button></div>`;
+  }).join('');
+}
+
+function removeAttach(i) {
+  pendingAttachments.splice(i, 1);
+  renderAttachChips();
+}
+
+function clearAttachments() {
+  pendingAttachments = [];
+  renderAttachChips();
+}
+
+// ファイル種別判定
+function classifyFile(file) {
+  const name = file.name.toLowerCase();
+  if (file.type === 'application/pdf' || name.endsWith('.pdf')) return 'pdf';
+  if (name.endsWith('.csv') || file.type === 'text/csv') return 'data-csv';
+  if (name.endsWith('.json') || name.endsWith('.alog') || file.type === 'application/json') return 'data-json';
+  if (name.endsWith('.xls') || name.endsWith('.xlsx')) return 'data-excel';
+  if (file.type && file.type.startsWith('image/')) return 'image';
+  return 'unknown';
+}
+
+// 既存handleFileを置換するための新handleFile（複数対応）
+function handleFile(e) {
+  const files = Array.from(e.target.files || []);
+  for (const file of files) {
+    if (pendingAttachments.length >= ATTACH_MAX) {
+      alert(`添付は最大${ATTACH_MAX}件までです`);
+      break;
+    }
+    if (totalAttachBytes() + file.size > ATTACH_TOTAL_LIMIT) {
+      alert('合計サイズが20MBを超えるため、これ以上追加できません');
+      break;
+    }
+    addAttachment(file);
+  }
+  e.target.value = '';
+}
+
+function addAttachment(file) {
+  const cls = classifyFile(file);
+  const reader = new FileReader();
+  if (cls === 'data-excel') {
+    pendingAttachments.push({
+      kind: 'data', size: file.size, fileName: file.name,
+      dataText: `【Excelファイル: ${file.name}】\nExcelファイルは直接読み込めません。Artisanから「ファイル → データとしてエクスポート → CSV」で書き出したCSVか、.alogファイルを使用してください。`
+    });
+    renderAttachChips();
+    return;
+  }
+  if (cls === 'data-csv' || cls === 'data-json') {
+    reader.onload = ev => {
+      const text = ev.target.result;
+      let parsed;
+      if (cls === 'data-json') parsed = parseArtisanJSON(text, file.name);
+      else parsed = parseArtisanCSV(text, file.name);
+      pendingAttachments.push({
+        kind: 'data', size: file.size, fileName: file.name,
+        dataText: formatDataForAI(parsed)
+      });
+      renderAttachChips();
+    };
+    reader.readAsText(file, 'UTF-8');
+    return;
+  }
+  if (cls === 'pdf' || cls === 'image') {
+    reader.onload = ev => {
+      const dataUrl = ev.target.result;
+      const base64 = dataUrl.split(',')[1];
+      if (cls === 'pdf') {
+        pendingAttachments.push({
+          kind: 'pdf', size: file.size, fileName: file.name,
+          base64: base64, mediaType: 'application/pdf'
+        });
+      } else {
+        pendingAttachments.push({
+          kind: 'image', size: file.size, fileName: file.name,
+          base64: base64, mediaType: file.type || 'image/jpeg'
+        });
+      }
+      renderAttachChips();
+    };
+    reader.readAsDataURL(file);
+    return;
+  }
+  alert(`未対応ファイル形式: ${file.name}`);
+}
+
+// 旧removeImageは互換のため残す（preview-areaを閉じる役割）
+function removeImage() {
+  clearAttachments();
+}
+
+// ━━━ v8追加：エクスポート機能 ━━━
+function downloadFile(filename, content, mime) {
+  // UTF-8 BOM付き
+  const blob = new Blob([new Uint8Array([0xEF,0xBB,0xBF]), content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function csvEsc(s) {
+  if (s == null) return '';
+  s = String(s);
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+function exportLogsCSV() {
+  const logs = loadLogs();
+  if (!logs.length) { alert('焙煎ログがまだありません'); return; }
+  const lines = ['日付,内容'];
+  for (const e of logs) {
+    lines.push(csvEsc(e.date) + ',' + csvEsc(e.text));
+  }
+  const today = new Date().toISOString().slice(0,10);
+  downloadFile(`possible_coffee_roast_logs_${today}.csv`, lines.join('\r\n'), 'text/csv;charset=utf-8');
+}
+function exportMemosTXT() {
+  const memos = loadMemos();
+  if (!memos.length) { alert('会話メモがまだありません'); return; }
+  const text = memos.map(m => `[${m.date}]\n${m.text}`).join('\n\n');
+  const today = new Date().toISOString().slice(0,10);
+  downloadFile(`possible_coffee_memos_${today}.txt`, text, 'text/plain;charset=utf-8');
+}
+function exportPrTXT() {
+  const logs = loadPrLogs();
+  if (!logs.length) { alert('広報メモがまだありません'); return; }
+  const text = logs.map(m => `[${m.date}]\n${m.text}`).join('\n\n');
+  const today = new Date().toISOString().slice(0,10);
+  downloadFile(`possible_coffee_pr_${today}.txt`, text, 'text/plain;charset=utf-8');
+}
+
+// ━━━ v8追加：俯瞰ビュー ━━━
+// 焙煎ログのうち、テキスト中にBT温度系列を含むものを抽出して描画する。
+// 形式：行頭が「BT履歴:」または「BT:」で、カンマ区切りの数値列。
+// または、formatDataForAIが「BT…」を含む場合に正規表現で拾う。
+function extractBeanName(logText) {
+  // 「ブラジル」「エチオピア」などの産地名 or 豆名第一トークンを抽出
+  const m = logText.match(/^(ブラジル|エチオピア|コロンビア|グアテマラ|ケニア|コスタリカ|パナマ|インドネシア|台湾|イエメン|エルサルバドル|ニカラグア|ホンジュラス|ブルンジ|ルワンダ)/);
+  if (m) return m[1];
+  const first = logText.split(/[\s,、・]/)[0] || '不明';
+  return first.slice(0, 12);
+}
+function extractBTSeries(logText) {
+  // 「BT履歴:」「BT:」の後の数値列、または "1ハゼBT 185℃" のような単発値
+  const series = [];
+  const seriesMatch = logText.match(/BT履歴[:：]\s*([0-9.,\s]+)/);
+  if (seriesMatch) {
+    const nums = seriesMatch[1].split(/[,\s]+/).map(parseFloat).filter(v => !isNaN(v) && v > 50 && v < 250);
+    return nums;
+  }
+  // 数値の羅列を拾う（最低5点必要）
+  const numAll = (logText.match(/\b\d{2,3}(?:\.\d+)?\b/g) || []).map(parseFloat).filter(v => v > 50 && v < 250);
+  return numAll.length >= 5 ? numAll : [];
+}
+function renderOverview() {
+  const canvas = document.getElementById('overview-canvas');
+  if (!canvas) return;
+  const stats = document.getElementById('overview-stats');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const logs = loadLogs().slice(0, 30);
+  const filterEl = document.getElementById('overview-bean-filter');
+
+  // 豆名一覧を集計
+  const beans = new Set();
+  const series = [];
+  for (const log of logs) {
+    const bean = extractBeanName(log.text);
+    beans.add(bean);
+    const bt = extractBTSeries(log.text);
+    if (bt.length) series.push({ bean, date: log.date, bt });
+  }
+
+  // フィルタプルダウンを更新
+  if (filterEl) {
+    const cur = filterEl.value;
+    const options = ['<option value="">すべての豆</option>']
+      .concat([...beans].sort().map(b => `<option value="${esc(b)}">${esc(b)}</option>`));
+    filterEl.innerHTML = options.join('');
+    filterEl.value = cur;
+  }
+
+  // フィルタ適用
+  const filterVal = filterEl?.value || '';
+  const filtered = filterVal ? series.filter(s => s.bean === filterVal) : series;
+
+  if (!filtered.length) {
+    if (stats) stats.innerHTML = `集計可能な焙煎ログが見つかりません（合計${logs.length}件中、温度系列を含むもの 0件）。<br>ARTISAN .alog/JSONの分析結果を焙煎ログに記録すると、ここにグラフ表示されます。`;
+    // 説明テキストをcanvasに描画
+    ctx.fillStyle = '#444';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('過去30件のBT履歴を重ね描きします', 20, 30);
+    return;
+  }
+
+  // 軸範囲
+  const allBT = filtered.flatMap(s => s.bt);
+  const minBT = Math.max(70, Math.min(...allBT) - 5);
+  const maxBT = Math.min(230, Math.max(...allBT) + 5);
+  const maxLen = Math.max(...filtered.map(s => s.bt.length));
+
+  // 背景軸
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(40, 10); ctx.lineTo(40, H-25); ctx.lineTo(W-10, H-25); ctx.stroke();
+  ctx.fillStyle = '#666'; ctx.font = '10px sans-serif';
+  ctx.fillText(maxBT.toFixed(0)+'℃', 4, 14);
+  ctx.fillText(minBT.toFixed(0)+'℃', 4, H-25);
+  ctx.fillText('時間→', W-40, H-8);
+
+  // 各シリーズ描画（最新を濃く・古いを薄く）
+  const colors = ['#c8b8a2','#7eb8f7','#f7a87e','#9cd17e','#f77eb8','#b87ef7','#7ef7d1','#f7e07e','#a87ef7','#7ef79c'];
+  filtered.forEach((s, idx) => {
+    const alpha = 1 - (idx / Math.max(filtered.length, 1)) * 0.7;
+    ctx.strokeStyle = colors[idx % colors.length];
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth = idx === 0 ? 2 : 1;
+    ctx.beginPath();
+    s.bt.forEach((bt, i) => {
+      const x = 40 + (i / Math.max(maxLen-1, 1)) * (W - 50);
+      const y = (H-25) - ((bt - minBT) / Math.max(maxBT - minBT, 1)) * (H - 35);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
+
+  if (stats) {
+    stats.innerHTML = `${filtered.length}件のBT履歴を表示中（豆種：${[...new Set(filtered.map(s=>s.bean))].join('・')}）<br>最新ログが濃い線、古いログほど薄く表示されています。`;
+  }
+}
+
+// switchTab: overview対応
+const _origSwitchTab = (typeof switchTab === 'function') ? switchTab : null;
+window.switchTab = function(tab) {
+  ['log','memo','pr','overview'].forEach(t => {
+    const tEl = document.getElementById('tab-' + t);
+    const pEl = document.getElementById('panel-' + t);
+    if (tEl) tEl.classList.toggle('active', t === tab);
+    if (pEl) pEl.classList.toggle('active', t === tab);
+  });
+  if (tab === 'overview') renderOverview();
+};
+
+// 初期化（v8追加分）
+applyModeBadge();
+
 </script>
 </body>
 </html>
