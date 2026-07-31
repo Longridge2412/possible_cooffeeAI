@@ -608,9 +608,9 @@
   <div class="settings-row" id="settingsRow">
     <span>モデル</span>
     <select id="model-select" onchange="onModelChange()">
-      <option value="quality">🎯 高精度（Opus 5・焙煎分析向き）</option>
-      <option value="balanced">⚖️ バランス（Sonnet 5・速くて十分賢い）</option>
-      <option value="fast">⚡ 高速・低コスト（Haiku 4.5）</option>
+      <option value="balanced">⚖️ バランス（Sonnet 5）※通常はこれ</option>
+      <option value="quality">🎯 高精度（Opus 5・難しい分析のときだけ）</option>
+      <option value="fast">⚡ 高速・最安（Haiku 4.5）</option>
     </select>
     <button onclick="testConnection()">🔌 接続テスト</button>
     <button onclick="newConversation()">🗒 新しい会話</button>
@@ -1660,7 +1660,7 @@ const STORAGE_KEY_TIER = 'possible_model_tier';
 
 function getTier() {
   const t = localStorage.getItem(STORAGE_KEY_TIER);
-  return MODEL_TIERS[t] ? t : 'quality';
+  return MODEL_TIERS[t] ? t : 'balanced'; // v9.1：既定をバランス（Sonnet 5）に変更
 }
 function setTier(t) { if (MODEL_TIERS[t]) localStorage.setItem(STORAGE_KEY_TIER, t); }
 function onModelChange() {
